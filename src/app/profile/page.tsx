@@ -95,6 +95,7 @@ export default function ProfilePage() {
       .upsert({
         id: user.id,
         name: name || user.fullName || 'Anonymous',
+        avatar_url: user.imageUrl,
         gives: finalGives,
         gets: finalGets,
         vibes,
