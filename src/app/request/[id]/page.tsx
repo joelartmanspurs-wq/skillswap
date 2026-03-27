@@ -52,7 +52,13 @@ export default function RequestSessionPage({ params }: { params: Promise<{ id: s
       router.push('/inbox')
     } catch (error) {
       console.error('Error sending request:', error)
-      alert('Failed to send request. Make sure you applied the SQL fixes!')
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      if (errorMessage === 'AUTH_REQUIRED' || errorMessage === 'PROFILE_REQUIRED') {
+        alert('You must create an account first to be able to message other users and request sessions.')
+        router.push('/login')
+      } else {
+        alert('Failed to send request. Make sure you applied the SQL fixes!')
+      }
     } finally {
       setSending(false)
     }

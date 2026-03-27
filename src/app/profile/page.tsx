@@ -19,6 +19,8 @@ export default function ProfilePage() {
   const [name, setName] = useState('')
   const [gives, setGives] = useState<string[]>([])
   const [gets, setGets] = useState<string[]>([])
+  const [givesInput, setGivesInput] = useState('')
+  const [getsInput, setGetsInput] = useState('')
   const [vibes, setVibes] = useState<string[]>([])
   const [availability, setAvailability] = useState<Record<string, string[]>>({})
   const [latitude, setLatitude] = useState<number | null>(null)
@@ -31,7 +33,7 @@ export default function ProfilePage() {
     async function fetchProfile() {
       if (!isLoaded || !user) return
       
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -78,13 +80,23 @@ export default function ProfilePage() {
     if (!user) return
     setSaving(true)
     
+    // Check for any pending text in the tag inputs that wasn't officially added
+    const finalGives = givesInput.trim() && !gives.includes(givesInput.trim()) ? [...gives, givesInput.trim()] : gives
+    const finalGets = getsInput.trim() && !gets.includes(getsInput.trim()) ? [...gets, getsInput.trim()] : gets
+    
+    // Clear inputs visually and update tracking arrays
+    setGivesInput('')
+    setGetsInput('')
+    if (finalGives !== gives) setGives(finalGives)
+    if (finalGets !== gets) setGets(finalGets)
+
     const { error } = await supabase
       .from('profiles')
       .upsert({
         id: user.id,
         name: name || user.fullName || 'Anonymous',
-        gives,
-        gets,
+        gives: finalGives,
+        gets: finalGets,
         vibes,
         availability,
         latitude,
@@ -144,8 +156,8 @@ export default function ProfilePage() {
       <section className="space-y-6">
         <h2 className="text-xl font-semibold">Value Exchange</h2>
         <div className="grid md:grid-cols-2 gap-8">
-          <TagInput label="What can you give? (Skills)" description="Type a skill and press Enter" placeholder="e.g. JavaScript" tags={gives} onChange={setGives} />
-          <TagInput label="What do you want to get? (Needs)" description="Type a skill you want to learn" placeholder="e.g. Pottery" tags={gets} onChange={setGets} />
+          <TagInput label="What can you give? (Skills)" description="Type a skill and press Add or Enter" placeholder="e.g. JavaScript" tags={gives} onChange={setGives} inputValue={givesInput} onInputChange={setGivesInput} />
+          <TagInput label="What do you want to get? (Needs)" description="Type a skill you want to learn" placeholder="e.g. Pottery" tags={gets} onChange={setGets} inputValue={getsInput} onInputChange={setGetsInput} />
         </div>
       </section>
 

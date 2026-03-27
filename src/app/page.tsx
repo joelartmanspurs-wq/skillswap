@@ -1,6 +1,6 @@
 import { auth, currentUser as clerkCurrentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { MapPin, Calendar, Star, Search, Send, User } from 'lucide-react'
+import { MapPin, Calendar, Star, Search, Send, User, ShieldAlert } from 'lucide-react'
 import Link from 'next/link'
 import StartChatButton from '@/components/StartChatButton'
 import { createClient } from '@/utils/supabase/server'
@@ -61,6 +61,21 @@ export default async function MatchFeed() {
     .select('*')
     .eq('id', userId)
     .single()
+
+  if (dbUser?.is_suspended) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center space-y-4 max-w-sm">
+          <ShieldAlert className="w-16 h-16 mx-auto text-red-500" />
+          <h1 className="text-2xl font-bold">Account Suspended</h1>
+          <p className="text-zinc-500">Your account has been suspended for violating our community guidelines. If you believe this is a mistake, please contact support.</p>
+          <div className="pt-4">
+            <Link href="/login" className="text-sm font-medium underline">Sign out</Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // 2. Fetch all candidates EXCEPT the current user
   const { data: candidates, error } = await supabase

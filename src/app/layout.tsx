@@ -84,8 +84,16 @@ export default function RootLayout({
             {children}
           </main>
 
-        </body>
-      </html>
+        <footer className="max-w-3xl mx-auto p-8 text-center text-zinc-400 text-xs border-t border-zinc-100 dark:border-zinc-800">
+           <p>© 2026 SkillSwap. All rights reserved.</p>
+           <div className="mt-4 flex justify-center gap-6">
+              <Link href="/admin" className="hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">Admin Access</Link>
+              <span>•</span>
+              <Link href="/profile" className="hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">Settings</Link>
+           </div>
+        </footer>
+      </body>
+    </html>
     </ClerkProvider>
   )
 }

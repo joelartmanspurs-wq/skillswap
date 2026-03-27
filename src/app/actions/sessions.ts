@@ -8,7 +8,16 @@ export async function createSessionRequest(providerId: string, skillRequested: s
     const supabase = await createClient()
     const { userId } = await auth()
 
-    if (!userId) throw new Error('Unauthorized')
+    if (!userId) throw new Error('AUTH_REQUIRED')
+
+    // Ensure profile exists
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single()
+
+    if (!profile) throw new Error('PROFILE_REQUIRED')
 
     const { data, error } = await supabase
         .from('session_requests')

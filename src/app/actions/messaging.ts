@@ -8,7 +8,16 @@ export async function sendMessage(recipientId: string, content: string) {
     const supabase = await createClient()
     const { userId } = await auth()
 
-    if (!userId) throw new Error('Unauthorized')
+    if (!userId) throw new Error('AUTH_REQUIRED')
+
+    // Ensure profile exists
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single()
+
+    if (!profile) throw new Error('PROFILE_REQUIRED')
 
     // 1. Find or create a conversation between these two users
     // Find existing conversation
@@ -148,7 +157,16 @@ export async function startConversation(recipientId: string) {
     const supabase = await createClient()
     const { userId } = await auth()
 
-    if (!userId) throw new Error('Unauthorized')
+    if (!userId) throw new Error('AUTH_REQUIRED')
+
+    // Ensure profile exists
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single()
+
+    if (!profile) throw new Error('PROFILE_REQUIRED')
 
     // Find existing conversation
     const { data: participants } = await supabase
