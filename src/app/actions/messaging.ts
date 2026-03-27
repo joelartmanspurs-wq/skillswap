@@ -123,12 +123,21 @@ export async function getConversations() {
             .limit(1)
             .single()
 
+        // Get unread count for this conversation
+        const { count: unreadCount } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', conv.id)
+            .neq('sender_id', userId)
+            .eq('is_read', false)
+
         return {
             id: conv.id,
             otherParticipant: otherPart?.profiles,
             otherParticipantId: otherPart?.user_id,
             lastMessage: lastMsg?.content,
-            lastMessageAt: lastMsg?.created_at
+            lastMessageAt: lastMsg?.created_at,
+            unreadCount: unreadCount || 0
         }
     }))
 

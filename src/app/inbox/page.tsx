@@ -107,12 +107,15 @@ export default function InboxPage() {
           </button>
           <button
             onClick={() => setActiveTab('messages')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'messages' ? 'bg-white dark:bg-zinc-700 shadow-sm' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${activeTab === 'messages' ? 'bg-white dark:bg-zinc-700 shadow-sm' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
           >
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
               Messages
             </div>
+            {conversations.some(c => c.unreadCount > 0) && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-zinc-800" />
+            )}
           </button>
         </div>
       </div>
@@ -216,7 +219,12 @@ export default function InboxPage() {
                     className={`w-full p-4 flex flex-col items-start gap-1 border-b border-zinc-50 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${selectedConversation?.id === conv.id ? 'bg-zinc-50 dark:bg-zinc-800 pr-2 border-r-4 border-r-black dark:border-r-white' : ''}`}
                   >
                     <div className="flex justify-between w-full items-baseline">
-                      <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">{conv.otherParticipant?.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">{conv.otherParticipant?.name}</span>
+                        {conv.unreadCount > 0 && (
+                          <span className="w-2 h-2 bg-red-500 rounded-full" />
+                        )}
+                      </div>
                       {conv.lastMessageAt && (
                         <span className="text-[10px] text-zinc-400">{format(new Date(conv.lastMessageAt), 'MMM d')}</span>
                       )}
