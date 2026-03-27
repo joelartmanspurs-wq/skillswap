@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Home, Map as MapIcon, User, Inbox } from 'lucide-react'
 import { ClerkProvider } from "@clerk/nextjs"
 import AuthButtons from '@/app/components/AuthButtons'
+import MessageBadge from '@/components/MessageBadge'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
@@ -41,8 +42,13 @@ export default function RootLayout({
                 <MapIcon className="w-5 h-5 mb-1" />
                 <span className="text-[10px] font-medium">Map</span>
               </Link>
-              <Link href="/inbox" className="flex flex-col items-center p-2 text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
-                <Inbox className="w-5 h-5 mb-1" />
+              <Link href="/inbox" className="flex flex-col items-center p-2 text-zinc-500 hover:text-black dark:hover:text-white transition-colors relative">
+                <div className="relative">
+                  <Inbox className="w-5 h-5 mb-1" />
+                  <div className="absolute -top-1 -right-2">
+                    <MessageBadge />
+                  </div>
+                </div>
                 <span className="text-[10px] font-medium">Inbox</span>
               </Link>
               <Link href="/profile" className="flex flex-col items-center p-2 text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
@@ -66,9 +72,12 @@ export default function RootLayout({
                 <MapIcon className="w-5 h-5" />
                 Neighborhood
               </Link>
-              <Link href="/inbox" className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white transition-colors font-medium">
-                <Inbox className="w-5 h-5" />
-                Requests
+              <Link href="/inbox" className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white transition-colors font-medium">
+                <div className="flex items-center gap-3">
+                  <Inbox className="w-5 h-5" />
+                  Requests
+                </div>
+                <MessageBadge />
               </Link>
               <Link href="/profile" className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white transition-colors font-medium">
                 <User className="w-5 h-5" />

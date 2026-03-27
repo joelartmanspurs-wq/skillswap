@@ -5,6 +5,7 @@ import { Check, X, Video, MessageSquare, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
 import { getConversations } from '@/app/actions/messaging'
 import { updateSessionRequestStatus } from '@/app/actions/sessions'
+import { markMessagesAsRead, markRequestsAsRead } from '@/app/actions/notifications'
 import ChatInterface from '@/components/ChatInterface'
 import { useUser } from '@clerk/nextjs'
 
@@ -35,6 +36,9 @@ export default function InboxPage() {
     // Fetch Conversations
     const convs = await getConversations()
     setConversations(convs)
+
+    // Mark requests as read when viewed
+    await markRequestsAsRead()
 
     setLoading(false)
   }, [user, supabase])
@@ -205,7 +209,10 @@ export default function InboxPage() {
                 conversations.map(conv => (
                   <button
                     key={conv.id}
-                    onClick={() => setSelectedConversation(conv)}
+                    onClick={async () => {
+                      setSelectedConversation(conv)
+                      await markMessagesAsRead(conv.id)
+                    }}
                     className={`w-full p-4 flex flex-col items-start gap-1 border-b border-zinc-50 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors ${selectedConversation?.id === conv.id ? 'bg-zinc-50 dark:bg-zinc-800 pr-2 border-r-4 border-r-black dark:border-r-white' : ''}`}
                   >
                     <div className="flex justify-between w-full items-baseline">
