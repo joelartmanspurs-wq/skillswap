@@ -5,6 +5,7 @@ import { TagInput } from '@/components/ui/TagInput'
 import { Loader2, MapPin, CheckCircle2 } from 'lucide-react'
 import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/utils/supabase/client'
+import filter from 'leo-profanity'
 
 const VIBE_OPTIONS = ["Fast-paced", "Patient", "Casual", "Detail-oriented", "Hands-on", "Theoretical", "Intense", "Relaxed"]
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -78,6 +79,13 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     if (!user) return
+
+    // 1. Check for profanity in the name
+    if (filter.check(name)) {
+        alert('Please use a more appropriate display name!')
+        return
+    }
+
     setSaving(true)
     
     // Check for any pending text in the tag inputs that wasn't officially added
