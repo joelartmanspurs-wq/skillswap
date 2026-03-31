@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { getMessages } from '@/app/actions/messaging'
 import { Send, Loader2 } from 'lucide-react'
@@ -19,7 +19,8 @@ export default function ChatInterface({ conversationId, currentUserId, otherPers
     const [loading, setLoading] = useState(true)
     const [sending, setSending] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
-    const supabase = createClient()
+    // Stable client — never recreated on re-render
+    const supabase = useMemo(() => createClient(), [])
 
     useEffect(() => {
         const fetchMessages = async () => {
@@ -35,7 +36,7 @@ export default function ChatInterface({ conversationId, currentUserId, otherPers
 
         fetchMessages()
 
-        // Subscribe to new messages
+        // Realtime subscription for new messages
         const channel = supabase
             .channel(`conversation:${conversationId}`)
             .on('postgres_changes', {
@@ -46,15 +47,30 @@ export default function ChatInterface({ conversationId, currentUserId, otherPers
             }, (payload) => {
                 const newMsg = payload.new as Message
                 setMessages((prev) => {
-                    // Avoid duplicates (optimistic message already replaced with real one)
                     if (prev.some(m => m.id === newMsg.id)) return prev
                     return [...prev, newMsg]
                 })
             })
             .subscribe()
 
+        // Polling fallback — catches messages if realtime misses them
+        const poll = setInterval(async () => {
+            try {
+                const data = await getMessages(conversationId)
+                setMessages(prev => {
+                    // Only update if there are genuinely new messages
+                    const existingIds = new Set(prev.map(m => m.id))
+                    const hasNew = data.some((m: Message) => !existingIds.has(m.id))
+                    return hasNew ? data : prev
+                })
+            } catch {
+                // silently ignore poll errors
+            }
+        }, 3000)
+
         return () => {
             supabase.removeChannel(channel)
+            clearInterval(poll)
         }
     }, [conversationId, supabase])
 
@@ -98,7 +114,6 @@ export default function ChatInterface({ conversationId, currentUserId, otherPers
             setMessages(prev => prev.map(m => m.id === tempId ? data as Message : m))
         } catch (error) {
             console.error('Error sending message:', error)
-            // Remove failed optimistic message and restore input
             setMessages(prev => prev.filter(m => m.id !== tempId))
             setNewMessage(content)
         } finally {

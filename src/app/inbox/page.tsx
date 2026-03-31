@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { Check, X, Video, MessageSquare, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
@@ -19,7 +19,8 @@ export default function InboxPage() {
   const [selectedConversation, setSelectedConversation] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const { user, isLoaded } = useUser()
-  const supabase = createClient()
+  // Stable client — never recreated on re-render
+  const supabase = useMemo(() => createClient(), [])
 
   const fetchData = useCallback(async () => {
     if (!user) return
