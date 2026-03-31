@@ -2,7 +2,9 @@ import { auth, currentUser as clerkCurrentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { MapPin, Calendar, Star, Search, Send, User, ShieldAlert } from 'lucide-react'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import StartChatButton from '@/components/StartChatButton'
+import SkillCategoryFilter, { SKILL_CATEGORIES } from '@/components/SkillCategoryFilter'
 import { createClient } from '@/utils/supabase/server'
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -48,9 +50,11 @@ function calculateMatchScore(currentUser: any, candidate: any) {
   }
 }
 
-export default async function MatchFeed() {
+export default async function MatchFeed({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
   const { userId } = await auth()
   if (!userId) redirect('/login')
+
+  const { category } = await searchParams
 
   const supabase = await createClient()
 
@@ -87,6 +91,17 @@ export default async function MatchFeed() {
     }))
     .sort((a, b) => b.matchData.score - a.matchData.score)
 
+  // Filter by category if one is selected
+  const selectedCategory = SKILL_CATEGORIES.find(c => c.id === category)
+  const filteredCandidates = selectedCategory
+    ? scoredCandidates.filter(candidate => {
+        const allSkills = [...(candidate.gives || []), ...(candidate.gets || [])]
+        return allSkills.some(skill =>
+          selectedCategory.keywords.some(kw => skill.toLowerCase().includes(kw))
+        )
+      })
+    : scoredCandidates
+
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-6 pb-24">
       {/* Header */}
@@ -108,16 +123,25 @@ export default async function MatchFeed() {
         </Link>
       </div>
 
+      {/* Category Filter */}
+      <Suspense>
+        <SkillCategoryFilter />
+      </Suspense>
+
       {/* Candidate Cards */}
-      <div className="space-y-6">
-        {scoredCandidates.length === 0 ? (
+      <div className="space-y-6 mt-6">
+        {filteredCandidates.length === 0 ? (
           <div className="text-center p-12 bg-zinc-50 dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 border-dashed">
             <Search className="w-8 h-8 mx-auto text-zinc-400 mb-4" />
-            <h3 className="text-lg font-medium">No active users yet</h3>
-            <p className="text-zinc-500 mt-2 max-w-xs mx-auto">Click Profile to set up your skills, or apply the SQL code I provided to see some examples!</p>
+            <h3 className="text-lg font-medium">
+              {selectedCategory ? `No one in ${selectedCategory.label} yet` : 'No active users yet'}
+            </h3>
+            <p className="text-zinc-500 mt-2 max-w-xs mx-auto">
+              {selectedCategory ? 'Try a different category or clear the filter.' : 'Click Profile to set up your skills!'}
+            </p>
           </div>
         ) : (
-          scoredCandidates.map(candidate => (
+          filteredCandidates.map(candidate => (
             <div
               key={candidate.id}
               className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md transition-shadow"
