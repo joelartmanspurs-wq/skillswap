@@ -37,7 +37,11 @@ export default function RequestSessionPage({ params }: { params: Promise<{ id: s
 
   const handleSendRequest = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isLoaded || !user) return
+    if (!isLoaded || !user) {
+      alert('You need to create an account before you can message other users or send session requests. Sign up or log in to continue.')
+      router.push('/login')
+      return
+    }
     setSending(true)
 
     try {
@@ -53,11 +57,11 @@ export default function RequestSessionPage({ params }: { params: Promise<{ id: s
     } catch (error) {
       console.error('Error sending request:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      if (errorMessage === 'AUTH_REQUIRED' || errorMessage === 'PROFILE_REQUIRED') {
-        alert('You must create an account first to be able to message other users and request sessions.')
+      if (errorMessage === 'AUTH_REQUIRED' || errorMessage === 'PROFILE_REQUIRED' || errorMessage.includes('not authenticated')) {
+        alert('You need to create an account before you can message other users or send session requests. Sign up or log in to continue.')
         router.push('/login')
       } else {
-        alert('Failed to send request. Make sure you applied the SQL fixes!')
+        alert('Something went wrong sending your request. Please try again.')
       }
     } finally {
       setSending(false)

@@ -17,8 +17,8 @@ export default function StartChatButton({ recipientId }: { recipientId: string }
         } catch (error) {
             console.error('Error starting chat:', error)
             const errorMessage = error instanceof Error ? error.message : String(error)
-            if (errorMessage === 'AUTH_REQUIRED' || errorMessage === 'PROFILE_REQUIRED') {
-                alert('You must create an account first to be able to message other users and request sessions.')
+            if (errorMessage === 'AUTH_REQUIRED' || errorMessage === 'PROFILE_REQUIRED' || errorMessage.includes('not authenticated')) {
+                alert('You need to create an account before you can message other users. Sign up or log in to continue.')
                 router.push('/login')
             } else {
                 alert('Could not start chat. Please try again.')
