@@ -48,20 +48,18 @@ export default function InboxPage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchData()
 
-      // Real-time subscription for session requests
+      // Real-time subscription for session requests and new messages
       const channel = supabase
-        .channel('session_requests_changes')
+        .channel('inbox_realtime')
         .on(
           'postgres_changes',
-          {
-            event: '*', 
-            schema: 'public',
-            table: 'session_requests'
-          },
-          () => {
-            // Refresh data when any change occurs in session_requests
-            fetchData()
-          }
+          { event: '*', schema: 'public', table: 'session_requests' },
+          () => fetchData()
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages' },
+          () => fetchData()
         )
         .subscribe()
 

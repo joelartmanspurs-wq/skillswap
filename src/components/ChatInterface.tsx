@@ -44,7 +44,12 @@ export default function ChatInterface({ conversationId, currentUserId, otherPers
                 table: 'messages',
                 filter: `conversation_id=eq.${conversationId}`
             }, (payload) => {
-                setMessages((prev) => [...prev, payload.new as Message])
+                const newMsg = payload.new as Message
+                setMessages((prev) => {
+                    // Avoid duplicates (optimistic message already replaced with real one)
+                    if (prev.some(m => m.id === newMsg.id)) return prev
+                    return [...prev, newMsg]
+                })
             })
             .subscribe()
 
@@ -63,26 +68,39 @@ export default function ChatInterface({ conversationId, currentUserId, otherPers
         e.preventDefault()
         if (!newMessage.trim() || sending) return
 
+        const content = newMessage
+        setNewMessage('')
         setSending(true)
-        try {
-            // In a real app, we might insert optimistically. 
-            // For now, let the trigger/subscription handle it.
-            // We need the recipientId to call sendMessage, which we don't have here directly in this component's props if we only have convId.
-            // Actually, my sendMessage action handles finding/creating conv if recipientId is provided.
-            // If we ALREADY have a convId, we can just insert directly.
 
-            const { error } = await supabase
+        // Optimistic update — show message immediately
+        const tempId = `temp-${Date.now()}`
+        const optimisticMessage: Message = {
+            id: tempId,
+            content,
+            sender_id: currentUserId,
+            created_at: new Date().toISOString()
+        }
+        setMessages(prev => [...prev, optimisticMessage])
+
+        try {
+            const { data, error } = await supabase
                 .from('messages')
                 .insert({
                     conversation_id: conversationId,
                     sender_id: currentUserId,
-                    content: newMessage
+                    content
                 })
+                .select()
+                .single()
 
             if (error) throw error
-            setNewMessage('')
+            // Replace temp message with the real one from the server
+            setMessages(prev => prev.map(m => m.id === tempId ? data as Message : m))
         } catch (error) {
             console.error('Error sending message:', error)
+            // Remove failed optimistic message and restore input
+            setMessages(prev => prev.filter(m => m.id !== tempId))
+            setNewMessage(content)
         } finally {
             setSending(false)
         }
