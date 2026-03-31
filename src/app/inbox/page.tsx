@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Check, X, Video, MessageSquare, Calendar } from 'lucide-react'
@@ -10,7 +10,7 @@ import { markMessagesAsRead, markRequestsAsRead } from '@/app/actions/notificati
 import ChatInterface from '@/components/ChatInterface'
 import { useUser } from '@clerk/nextjs'
 
-export default function InboxPage() {
+function InboxContent() {
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<'requests' | 'messages'>(
     searchParams.get('tab') === 'messages' ? 'messages' : 'requests'
@@ -274,5 +274,13 @@ export default function InboxPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function InboxPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-zinc-500">Loading your inbox...</div>}>
+      <InboxContent />
+    </Suspense>
   )
 }
