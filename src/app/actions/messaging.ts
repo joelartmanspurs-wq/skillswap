@@ -80,70 +80,75 @@ export async function getConversations() {
 
     if (!userId) return []
 
-    const { data, error } = await supabase
+    // Step 1: get conversation IDs for this user
+    const { data: myParticipations } = await supabase
         .from('conversation_participants')
-        .select(`
-      conversation_id,
-      conversations (
-        id,
-        updated_at,
-        messages (
-          content,
-          created_at,
-          sender_id
-        )
-      )
-    `)
+        .select('conversation_id')
         .eq('user_id', userId)
 
-    if (error) {
-        console.error('Error fetching conversations:', error)
-        return []
-    }
+    if (!myParticipations?.length) return []
 
-    // Get other participant and last message for each conversation
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const conversations = await Promise.all(data.map(async (item: any) => {
-        const conv = item.conversations
+    const conversationIds = myParticipations.map(p => p.conversation_id)
 
-        // Get the other participant
-        const { data: otherPart } = await supabase
+    // Step 2: batch-fetch other participants, all messages, and unread messages in parallel
+    const [
+        { data: otherParticipants },
+        { data: allMessages },
+        { data: unreadMessages }
+    ] = await Promise.all([
+        supabase
             .from('conversation_participants')
-            .select('user_id, profiles(name, avatar_url)')
-            .eq('conversation_id', conv.id)
-            .neq('user_id', userId)
-            .single()
-
-        // Get last message
-        const { data: lastMsg } = await supabase
+            .select('conversation_id, user_id, profiles(name, avatar_url)')
+            .in('conversation_id', conversationIds)
+            .neq('user_id', userId),
+        supabase
             .from('messages')
-            .select('content, created_at')
-            .eq('conversation_id', conv.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single()
-
-        // Get unread count for this conversation
-        const { count: unreadCount } = await supabase
+            .select('conversation_id, content, created_at')
+            .in('conversation_id', conversationIds)
+            .order('created_at', { ascending: false }),
+        supabase
             .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('conversation_id', conv.id)
+            .select('conversation_id')
+            .in('conversation_id', conversationIds)
             .neq('sender_id', userId)
             .eq('is_read', false)
+    ])
 
-        return {
-            id: conv.id,
-            otherParticipant: otherPart?.profiles,
-            otherParticipantId: otherPart?.user_id,
-            lastMessage: lastMsg?.content,
-            lastMessageAt: lastMsg?.created_at,
-            unreadCount: unreadCount || 0
+    // Build O(1) lookup maps
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const participantMap = new Map<string, any>()
+    for (const p of otherParticipants || []) {
+        participantMap.set(p.conversation_id, p)
+    }
+
+    const lastMessageMap = new Map<string, { content: string; created_at: string }>()
+    for (const msg of allMessages || []) {
+        if (!lastMessageMap.has(msg.conversation_id)) {
+            lastMessageMap.set(msg.conversation_id, msg)
         }
-    }))
+    }
 
-    return conversations.sort((a, b) =>
-        new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
-    )
+    const unreadCountMap = new Map<string, number>()
+    for (const msg of unreadMessages || []) {
+        unreadCountMap.set(msg.conversation_id, (unreadCountMap.get(msg.conversation_id) || 0) + 1)
+    }
+
+    return conversationIds
+        .map(id => {
+            const participant = participantMap.get(id)
+            const lastMsg = lastMessageMap.get(id)
+            return {
+                id,
+                otherParticipant: participant?.profiles,
+                otherParticipantId: participant?.user_id,
+                lastMessage: lastMsg?.content,
+                lastMessageAt: lastMsg?.created_at,
+                unreadCount: unreadCountMap.get(id) || 0
+            }
+        })
+        .sort((a, b) =>
+            new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
+        )
 }
 
 export async function getMessages(conversationId: string) {

@@ -53,24 +53,8 @@ export default function ChatInterface({ conversationId, currentUserId, otherPers
             })
             .subscribe()
 
-        // Polling fallback — catches messages if realtime misses them
-        const poll = setInterval(async () => {
-            try {
-                const data = await getMessages(conversationId)
-                setMessages(prev => {
-                    // Only update if there are genuinely new messages
-                    const existingIds = new Set(prev.map(m => m.id))
-                    const hasNew = data.some((m: Message) => !existingIds.has(m.id))
-                    return hasNew ? data : prev
-                })
-            } catch {
-                // silently ignore poll errors
-            }
-        }, 3000)
-
         return () => {
             supabase.removeChannel(channel)
-            clearInterval(poll)
         }
     }, [conversationId, supabase])
 

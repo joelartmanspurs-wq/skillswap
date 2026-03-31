@@ -1,86 +1,60 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { getUnreadCount } from '@/app/actions/notifications'
 import { useUser } from '@clerk/nextjs'
 
 export default function MessageBadge() {
     const [count, setCount] = useState(0)
     const { user, isLoaded } = useUser()
-    const supabase = createClient()
+    const supabase = useMemo(() => createClient(), [])
 
     const fetchCount = useCallback(async () => {
         if (!user) return
-        const unread = await getUnreadCount()
-        setCount(unread)
-    }, [user])
+
+        // Get user's conversation IDs
+        const { data: participations } = await supabase
+            .from('conversation_participants')
+            .select('conversation_id')
+            .eq('user_id', user.id)
+
+        const conversationIds = participations?.map(p => p.conversation_id) || []
+
+        const [{ count: unreadMessages }, { count: unreadRequests }] = await Promise.all([
+            conversationIds.length > 0
+                ? supabase
+                    .from('messages')
+                    .select('*', { count: 'exact', head: true })
+                    .in('conversation_id', conversationIds)
+                    .neq('sender_id', user.id)
+                    .eq('is_read', false)
+                : Promise.resolve({ count: 0 }),
+            supabase
+                .from('session_requests')
+                .select('*', { count: 'exact', head: true })
+                .eq('provider_id', user.id)
+                .eq('status', 'pending')
+                .eq('is_read', false)
+        ])
+
+        setCount((unreadMessages || 0) + (unreadRequests || 0))
+    }, [user, supabase])
 
     useEffect(() => {
         if (!isLoaded || !user) return
 
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchCount().catch(console.error)
 
-        // Listen for new messages
-        const messageChannel = supabase
-            .channel('unread_messages')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'messages'
-                },
-                () => {
-                    fetchCount()
-                }
-            )
-            .subscribe()
-
-        // Listen for new session requests
-        const requestChannel = supabase
-            .channel('unread_requests')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'session_requests'
-                },
-                () => {
-                    fetchCount()
-                }
-            )
-            .subscribe()
-
-        // Also refresh when messages are marked as read
-        const updateChannel = supabase
-            .channel('read_updates')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'messages'
-                },
-                () => fetchCount()
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'session_requests'
-                },
-                () => fetchCount()
-            )
+        const channel = supabase
+            .channel('badge_updates')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => fetchCount())
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'session_requests' }, () => fetchCount())
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => fetchCount())
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'session_requests' }, () => fetchCount())
             .subscribe()
 
         return () => {
-            supabase.removeChannel(messageChannel)
-            supabase.removeChannel(requestChannel)
-            supabase.removeChannel(updateChannel)
+            supabase.removeChannel(channel)
         }
     }, [isLoaded, user, supabase, fetchCount])
 

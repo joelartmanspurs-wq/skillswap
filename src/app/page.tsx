@@ -52,15 +52,14 @@ export default async function MatchFeed() {
   const { userId } = await auth()
   if (!userId) redirect('/login')
 
-  const clerkUser = await clerkCurrentUser()
   const supabase = await createClient()
 
-  // 1. Fetch real current user profile
-  const { data: dbUser } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
+  // Fetch all data in parallel
+  const [clerkUser, { data: dbUser }, { data: candidates, error }] = await Promise.all([
+    clerkCurrentUser(),
+    supabase.from('profiles').select('*').eq('id', userId).single(),
+    supabase.from('profiles').select('*').neq('id', userId)
+  ])
 
   if (dbUser?.is_suspended) {
     return (
@@ -76,12 +75,6 @@ export default async function MatchFeed() {
       </div>
     )
   }
-
-  // 2. Fetch all candidates EXCEPT the current user
-  const { data: candidates, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .neq('id', userId)
 
   if (error) {
      console.error("Error fetching candidates:", error.message, error.code, error.details)
