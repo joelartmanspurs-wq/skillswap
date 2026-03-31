@@ -66,26 +66,35 @@ function InboxContent() {
 
   useEffect(() => {
     if (isLoaded && user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchData()
 
-      // Real-time subscription for session requests and new messages
-      const channel = supabase
-        .channel('inbox_realtime')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'session_requests' },
-          () => fetchData()
-        )
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'messages' },
-          () => fetchData()
-        )
+      // Broadcast channel — receives instant signal when any conversation gets a new message
+      const broadcastChannel = supabase
+        .channel('inbox_broadcasts')
+        .on('broadcast', { event: 'new_message' }, () => fetchData())
         .subscribe()
 
+      // Postgres changes for session requests (these work fine without client-side auth)
+      const requestsChannel = supabase
+        .channel('inbox_requests')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'session_requests' }, () => fetchData())
+        .subscribe()
+
+      // Polling every 5s — guaranteed fallback for conversation list
+      const poll = setInterval(fetchData, 5000)
+
+      // Sync when tab becomes visible or window focuses
+      const onVisible = () => { if (document.visibilityState === 'visible') fetchData() }
+      const onFocus = () => fetchData()
+      document.addEventListener('visibilitychange', onVisible)
+      window.addEventListener('focus', onFocus)
+
       return () => {
-        supabase.removeChannel(channel)
+        supabase.removeChannel(broadcastChannel)
+        supabase.removeChannel(requestsChannel)
+        clearInterval(poll)
+        document.removeEventListener('visibilitychange', onVisible)
+        window.removeEventListener('focus', onFocus)
       }
     }
   }, [isLoaded, user, fetchData, supabase])
@@ -125,6 +134,7 @@ function InboxContent() {
             </div>
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('messages')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all relative ${activeTab === 'messages' ? 'bg-white dark:bg-zinc-700 shadow-sm' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
           >
@@ -160,10 +170,10 @@ function InboxContent() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => handleUpdateStatus(req.id, 'accepted')} className="w-10 h-10 rounded-full bg-green-100 text-green-600 hover:bg-green-200 flex items-center justify-center transition-colors">
+                      <button type="button" title="Accept request" onClick={() => handleUpdateStatus(req.id, 'accepted')} className="w-10 h-10 rounded-full bg-green-100 text-green-600 hover:bg-green-200 flex items-center justify-center transition-colors">
                         <Check className="w-5 h-5" />
                       </button>
-                      <button onClick={() => handleUpdateStatus(req.id, 'rejected')} className="w-10 h-10 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center transition-colors">
+                      <button type="button" title="Reject request" onClick={() => handleUpdateStatus(req.id, 'rejected')} className="w-10 h-10 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center transition-colors">
                         <X className="w-5 h-5" />
                       </button>
                     </div>
@@ -230,6 +240,7 @@ function InboxContent() {
               ) : (
                 conversations.map(conv => (
                   <button
+                    type="button"
                     key={conv.id}
                     onClick={async () => {
                       setSelectedConversation(conv)

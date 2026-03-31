@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { getMessages } from '@/app/actions/messaging'
 import { Send, Loader2 } from 'lucide-react'
@@ -13,50 +13,71 @@ interface Message {
     created_at: string
 }
 
-export default function ChatInterface({ conversationId, currentUserId, otherPersonName }: { conversationId: string, currentUserId: string, otherPersonName: string }) {
+export default function ChatInterface({ conversationId, currentUserId, otherPersonName }: {
+    conversationId: string
+    currentUserId: string
+    otherPersonName: string
+}) {
     const [messages, setMessages] = useState<Message[]>([])
     const [newMessage, setNewMessage] = useState('')
     const [loading, setLoading] = useState(true)
     const [sending, setSending] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
-    // Stable client — never recreated on re-render
+    // Keep a ref to the broadcast channel so handleSend can trigger it
+    const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
     const supabase = useMemo(() => createClient(), [])
 
-    useEffect(() => {
-        const fetchMessages = async () => {
-            try {
-                const data = await getMessages(conversationId)
-                setMessages(data)
-            } catch (error) {
-                console.error('Error fetching messages:', error)
-            } finally {
-                setLoading(false)
-            }
+    // Stable sync function — fetches latest messages and updates state only on change
+    const syncMessages = useCallback(async () => {
+        try {
+            const data = await getMessages(conversationId) as Message[]
+            setMessages(prev => {
+                if (prev.length === data.length && prev[prev.length - 1]?.id === data[data.length - 1]?.id) return prev
+                return data
+            })
+        } catch {
+            // silently ignore sync errors
         }
+    }, [conversationId])
 
-        fetchMessages()
+    useEffect(() => {
+        // Initial load
+        getMessages(conversationId)
+            .then(data => setMessages(data as Message[]))
+            .catch(err => console.error('Error fetching messages:', err))
+            .finally(() => setLoading(false))
 
-        // Realtime subscription for new messages
+        // Layer 1: Supabase Broadcast — works without RLS or postgres_changes publication.
+        // When the sender broadcasts after inserting, all subscribers receive it instantly.
         const channel = supabase
-            .channel(`conversation:${conversationId}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messages',
-                filter: `conversation_id=eq.${conversationId}`
-            }, (payload) => {
-                const newMsg = payload.new as Message
-                setMessages((prev) => {
-                    if (prev.some(m => m.id === newMsg.id)) return prev
-                    return [...prev, newMsg]
-                })
+            .channel(`chat:${conversationId}`)
+            .on('broadcast', { event: 'new_message' }, () => {
+                syncMessages()
             })
             .subscribe()
 
+        channelRef.current = channel
+
+        // Layer 2: Page visibility + window focus — sync immediately when user returns to tab
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') syncMessages()
+        }
+        const onFocus = () => syncMessages()
+
+        document.addEventListener('visibilitychange', onVisibilityChange)
+        window.addEventListener('focus', onFocus)
+
+        // Layer 3: Polling every 3s — guaranteed fallback if broadcast fails
+        const poll = setInterval(syncMessages, 3000)
+
         return () => {
             supabase.removeChannel(channel)
+            channelRef.current = null
+            clearInterval(poll)
+            document.removeEventListener('visibilitychange', onVisibilityChange)
+            window.removeEventListener('focus', onFocus)
         }
-    }, [conversationId, supabase])
+    }, [conversationId, supabase, syncMessages])
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -72,30 +93,33 @@ export default function ChatInterface({ conversationId, currentUserId, otherPers
         setNewMessage('')
         setSending(true)
 
-        // Optimistic update — show message immediately
+        // Optimistic update
         const tempId = `temp-${Date.now()}`
-        const optimisticMessage: Message = {
+        setMessages(prev => [...prev, {
             id: tempId,
             content,
             sender_id: currentUserId,
             created_at: new Date().toISOString()
-        }
-        setMessages(prev => [...prev, optimisticMessage])
+        }])
 
         try {
             const { data, error } = await supabase
                 .from('messages')
-                .insert({
-                    conversation_id: conversationId,
-                    sender_id: currentUserId,
-                    content
-                })
+                .insert({ conversation_id: conversationId, sender_id: currentUserId, content })
                 .select()
                 .single()
 
             if (error) throw error
-            // Replace temp message with the real one from the server
+
+            // Replace temp with real message
             setMessages(prev => prev.map(m => m.id === tempId ? data as Message : m))
+
+            // Broadcast to other participant — triggers their instant sync
+            channelRef.current?.send({
+                type: 'broadcast',
+                event: 'new_message',
+                payload: {}
+            })
         } catch (error) {
             console.error('Error sending message:', error)
             setMessages(prev => prev.filter(m => m.id !== tempId))
@@ -125,8 +149,8 @@ export default function ChatInterface({ conversationId, currentUserId, otherPers
                     return (
                         <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${isMe
-                                    ? 'bg-black text-white dark:bg-white dark:text-black'
-                                    : 'bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800'
+                                ? 'bg-black text-white dark:bg-white dark:text-black'
+                                : 'bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800'
                                 }`}>
                                 <p>{msg.content}</p>
                                 <p className={`text-[10px] mt-1 opacity-50 ${isMe ? 'text-right' : 'text-left'}`}>
