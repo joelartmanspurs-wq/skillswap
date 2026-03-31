@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Check, X, Video, MessageSquare, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
@@ -10,7 +11,10 @@ import ChatInterface from '@/components/ChatInterface'
 import { useUser } from '@clerk/nextjs'
 
 export default function InboxPage() {
-  const [activeTab, setActiveTab] = useState<'requests' | 'messages'>('requests')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<'requests' | 'messages'>(
+    searchParams.get('tab') === 'messages' ? 'messages' : 'requests'
+  )
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [requests, setRequests] = useState<any[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,11 +42,21 @@ export default function InboxPage() {
     const convs = await getConversations()
     setConversations(convs)
 
+    // Auto-select conversation from URL param
+    const targetConversationId = searchParams.get('conversation')
+    if (targetConversationId) {
+      const target = convs.find(c => c.id === targetConversationId)
+      if (target) {
+        setSelectedConversation(target)
+        await markMessagesAsRead(target.id)
+      }
+    }
+
     // Mark requests as read when viewed
     await markRequestsAsRead()
 
     setLoading(false)
-  }, [user, supabase])
+  }, [user, supabase, searchParams])
 
   useEffect(() => {
     if (isLoaded && user) {

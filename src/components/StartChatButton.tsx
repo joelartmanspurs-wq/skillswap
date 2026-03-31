@@ -12,8 +12,8 @@ export default function StartChatButton({ recipientId }: { recipientId: string }
     const handleStartChat = async () => {
         setLoading(true)
         try {
-            await startConversation(recipientId)
-            router.push('/inbox')
+            const conversationId = await startConversation(recipientId)
+            router.push(`/inbox?tab=messages&conversation=${conversationId}`)
         } catch (error) {
             console.error('Error starting chat:', error)
             const errorMessage = error instanceof Error ? error.message : String(error)
