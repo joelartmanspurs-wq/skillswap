@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ClerkProvider } from "@clerk/nextjs"
 import AuthButtons from '@/app/components/AuthButtons'
 import SiteNav from '@/components/SiteNav'
+import AIChatBot from '@/components/AIChatBot'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
@@ -47,6 +48,8 @@ export default function RootLayout({
           <main className="min-h-screen pt-16 md:pt-0">
             {children}
           </main>
+
+          <AIChatBot />
 
           <footer className="max-w-3xl mx-auto p-8 text-center text-zinc-400 text-xs border-t border-zinc-100 dark:border-zinc-800">
             <p>© 2026 SkillConnectr. All rights reserved.</p>
