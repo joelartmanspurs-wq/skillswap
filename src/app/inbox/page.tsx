@@ -15,6 +15,12 @@ export default function InboxPage() {
   const [activeTab, setActiveTab] = useState<'requests' | 'messages'>(
     searchParams.get('tab') === 'messages' ? 'messages' : 'requests'
   )
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'messages') {
+      setActiveTab('messages')
+    }
+  }, [searchParams])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [requests, setRequests] = useState<any[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
