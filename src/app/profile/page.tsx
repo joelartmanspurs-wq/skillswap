@@ -7,6 +7,30 @@ import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/utils/supabase/client'
 import filter from 'leo-profanity'
 
+// Expand the default profanity list with additional words
+filter.add([
+  // Hate speech & slurs
+  'nigger', 'nigga', 'n1gger', 'n1gga', 'chink', 'gook', 'spic', 'spick', 'kike',
+  'wetback', 'beaner', 'raghead', 'towelhead', 'sandnigger', 'cracker', 'honky',
+  'faggot', 'fag', 'f4g', 'dyke', 'tranny', 'retard', 'r3tard', 'retarded',
+  // Extreme violence / threats
+  'killall', 'kill yourself', 'kys', 'go die', 'die bitch', 'murder',
+  // Sexual / explicit
+  'cock', 'c0ck', 'cocks', 'cocksucker', 'cumshot', 'cumslut', 'cumwhore',
+  'dickhead', 'd1ck', 'dildo', 'blowjob', 'handjob', 'fingerbang',
+  'pornstar', 'pr0n', 'slut', 'sl00t', 'slutty', 'whore', 'wh0re', 'skank',
+  'titties', 't1ts', 'boobies', 'boobjob', 'nudist', 'sexbot',
+  // Drug references
+  'crackhead', 'crackwhore', 'methhead', 'junkie', 'cokehead',
+  // Impersonation / spam
+  'admin', 'moderator', 'mod', 'support', 'helpdesk', 'official', 'system',
+  'skillswap_admin', 'skillswapmod',
+  // Leetspeak / bypass attempts
+  'a55', 'a$$', 'biatch', 'b1tch', 'b!tch', 'fuk', 'fvck', 'fück', 'phuck',
+  'sh1t', 'sh!t', '$hit', 'dumba$$', 'dumbass', 'jackass', 'jackoff',
+  'jerkoff', 'motherfucker', 'mf', 'mtherfkr', 'son of a bitch',
+])
+
 const VIBE_OPTIONS = ["Fast-paced", "Patient", "Casual", "Detail-oriented", "Hands-on", "Theoretical", "Intense", "Relaxed"]
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const TIMES = ['Morning', 'Afternoon', 'Evening']
