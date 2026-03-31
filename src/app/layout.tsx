@@ -9,7 +9,7 @@ import MessageBadge from '@/components/MessageBadge'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'SkillSwap',
+  title: 'SkillConnectr',
   description: 'The hyper-local micro-skill economy.',
 }
 
@@ -26,7 +26,7 @@ export default function RootLayout({
           {/* Mobile Top Header */}
           <header className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 md:hidden">
             <div className="flex justify-between items-center h-16 px-4">
-              <h1 className="text-xl font-bold">SkillSwap</h1>
+              <h1 className="text-xl font-bold">SkillConnectr</h1>
               <AuthButtons />
             </div>
           </header>
@@ -61,7 +61,7 @@ export default function RootLayout({
           {/* Desktop Sidebar */}
           <nav className="hidden md:flex fixed top-0 left-0 bottom-0 w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex-col p-6 z-50">
             <div className="mb-12">
-              <h1 className="text-2xl font-bold tracking-tight">SkillSwap</h1>
+              <h1 className="text-2xl font-bold tracking-tight">SkillConnectr</h1>
             </div>
             <div className="space-y-2 flex-1">
               <Link href="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white transition-colors font-medium">
@@ -94,7 +94,7 @@ export default function RootLayout({
           </main>
 
         <footer className="max-w-3xl mx-auto p-8 text-center text-zinc-400 text-xs border-t border-zinc-100 dark:border-zinc-800">
-           <p>© 2026 SkillSwap. All rights reserved.</p>
+           <p>© 2026 SkillConnectr. All rights reserved.</p>
            <div className="mt-4 flex justify-center gap-6">
               <Link href="/admin" className="hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">Admin Access</Link>
               <span>•</span>
