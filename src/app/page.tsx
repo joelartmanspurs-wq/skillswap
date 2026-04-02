@@ -4,7 +4,8 @@ import { MapPin, Calendar, Star, Search, Send, User, ShieldAlert } from 'lucide-
 import Link from 'next/link'
 import { Suspense } from 'react'
 import StartChatButton from '@/components/StartChatButton'
-import SkillCategoryFilter, { SKILL_CATEGORIES } from '@/components/SkillCategoryFilter'
+import SkillCategoryFilter from '@/components/SkillCategoryFilter'
+import { SKILL_CATEGORIES } from '@/lib/skillCategories'
 import { createClient } from '@/utils/supabase/server'
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
